@@ -1,3 +1,18 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="让你的 AI，托黑猫邮差米米给你送一封信。">
+<meta property="og:title" content="米米的银河邮局">
+<meta property="og:description" content="让你的 AI，托黑猫邮差米米给你送一封信。">
+<meta property="og:image" content="https://byebyealice.github.io/mimi-letter/docs/banner.jpg">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; height: 100%; }
+body { margin: 0; font: 14px system-ui, -apple-system, sans-serif; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
 <title>米米的信</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -185,6 +200,16 @@ body {
 /* end controls */
 #controls { position: absolute; left: 0; right: 0; bottom: 3.2%; display: flex; justify-content: center; gap: 3cqw; opacity: 0; pointer-events: none; transition: opacity .5s; }
 #controls.on { opacity: 1; pointer-events: auto; }
+.save-mini { position: absolute; top: 1.2%; right: 4%; z-index: 7; font-family: var(--font-ui); font-size: 3.4cqw; letter-spacing: .06em;
+  color: #2a1d55; background: var(--gold); border: 0; border-radius: 99px; padding: 1.2cqw 3.6cqw; cursor: pointer;
+  box-shadow: 0 .8cqw 2cqw rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .4s; }
+.save-mini.on { opacity: 1; pointer-events: auto; }
+#saved { position: absolute; inset: 0; z-index: 20; background: rgba(12,9,38,.88); display: grid; place-items: center; align-content: center; gap: 3cqw;
+  padding: 5cqw; box-sizing: border-box; cursor: default; }
+#saved img { max-width: 88%; max-height: 74%; border-radius: 2cqw; box-shadow: 0 2cqw 6cqw rgba(0,0,0,.5); -webkit-touch-callout: default; user-select: auto; -webkit-user-select: auto; }
+#saved p { margin: 0; font-family: var(--font-ui); font-size: 3.6cqw; color: var(--hint); opacity: .8; text-align: center; }
+#saved .row2 { display: flex; gap: 3cqw; }
+#saved .spin { font-family: var(--font-ui); font-size: 4.4cqw; color: var(--hint); }
 .btn {
   font-family: var(--font-ui); font-size: 4cqw; letter-spacing: .06em;
   color: #2a1d55; background: var(--gold); border: 0; border-radius: 99px;
@@ -234,6 +259,9 @@ body {
   .title.on { animation: none !important; opacity: 1 !important; }
 }
 </style>
+</head>
+<body>
+
 
 <div id="stage" role="main" aria-label="米米的信">
   <canvas id="dust"></canvas>
@@ -294,9 +322,17 @@ body {
 
   <button id="keep" class="keep" type="button"><img src="img/tip3.webp" alt="收好这封信"></button>
   <div id="bye-note" class="bye-note" aria-live="polite">信已收好<small>米米回银河邮局了</small></div>
+  <button id="save-mini" class="save-mini" type="button">保存这封信</button>
   <div id="controls">
     <button class="btn ghost" id="again" type="button">再看一遍</button>
-    <button class="btn" id="write" type="button">写一封试试</button>
+    <button class="btn" id="save" type="button">保存这封信</button>
+    <button class="btn ghost" id="write" type="button">写一封试试</button>
+  </div>
+  <div id="saved" hidden role="dialog" aria-label="保存这封信">
+    <div class="spin" id="saved-spin">米米正在把信拍成照片……</div>
+    <img id="saved-img" alt="这封信的图片" hidden>
+    <p id="saved-tip" hidden>长按图片可以保存到相册</p>
+    <div class="row2"><button class="btn" id="saved-dl" type="button" hidden>保存图片</button><button class="btn ghost" id="saved-close" type="button">关闭</button></div>
   </div>
 
   <form id="sheet" aria-label="写一封米米的信" novalidate>
@@ -541,7 +577,7 @@ body {
     for (const el of [mimi, env, letter, $("env-closed"), $("env-open"), $("l-doodle")]) { el.getAnimations().forEach(a => a.cancel()); }
     $("l-doodle").style.opacity = 0;
     env.classList.remove("open");
-    mimi.classList.remove("bye"); $("keep").classList.remove("on"); $("bye-note").classList.remove("on");
+    mimi.classList.remove("bye"); $("keep").classList.remove("on"); $("bye-note").classList.remove("on"); $("save-mini").classList.remove("on");
     hint1.classList.remove("on", "off"); hint2.classList.remove("on"); controls.classList.remove("on"); pawOff();
     mimi.style.opacity = 0; env.style.opacity = 0; letter.style.opacity = 0;
     stopSprite();
@@ -617,11 +653,13 @@ body {
     await sleep(500);
     if (!alive()) return;
     $("keep").classList.add("on");
+    $("save-mini").classList.add("on");
     pawAt(91, 90);
     await waitTap($("keep"));
     pawOff();
     if (!alive()) return;
     $("keep").classList.remove("on");
+    $("save-mini").classList.remove("on");
     for (const el of [env, $("env-closed"), $("env-open")]) el.getAnimations().forEach(a => a.cancel());
     $("env-open").style.opacity = 0; $("env-closed").style.opacity = 1;
     env.classList.remove("open");
@@ -725,9 +763,117 @@ body {
   $("write").addEventListener("click", (e) => { e.stopPropagation(); loadForm(current); sheet.classList.add("on"); });
   $("again").addEventListener("click", (e) => { e.stopPropagation(); play(current); });
 
+  // ---------- save the letter as one picture ----------
+  const NOSTART2 = "，。、；：！？）」』”’》…—,.;:!?)";
+  const loadImg = (src) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; });
+  const svgImg = (svg, color) => loadImg("data:image/svg+xml;charset=utf-8," + encodeURIComponent(
+    svg.replace(/currentColor/g, color).replace(/<svg(?![^>]*xmlns)/, '<svg xmlns="http://www.w3.org/2000/svg"')));
+  function wrapLines(g, text, maxW) {
+    const lines = []; let cur = "";
+    for (const ch of Array.from(text)) {
+      if (cur && g.measureText(cur + ch).width > maxW) {
+        if (NOSTART2.includes(ch)) { lines.push(cur.slice(0, -1)); cur = cur.slice(-1) + ch; } else { lines.push(cur); cur = ch; }
+      } else cur += ch;
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  }
+  async function renderLetter(d) {
+    const W = 1080, H = 1920, c = document.createElement("canvas"); c.width = W; c.height = H;
+    const g = c.getContext("2d");
+    const SERIF = '"ZCOOL XiaoWei", "Songti SC", "STSong", serif', SIGN = '"Ma Shan Zheng", "Kaiti SC", "STKaiti", cursive', UI = '"ZCOOL KuaiLe", "PingFang SC", sans-serif';
+    try { await Promise.race([Promise.all([
+      document.fonts.load('40px "ZCOOL XiaoWei"', d.body + "银河邮局米米投递随信附上" + (PARCELS[d.parcel] || "") + (PARCEL_MEAN[d.parcel] || "")),
+      document.fonts.load('40px "Ma Shan Zheng"', d.to + d.from + "："),
+      document.fonts.load('40px "ZCOOL KuaiLe"', "米米的银河邮局"),
+    ]), sleep(2500)]); } catch (e) {}
+    const [sky, paper, stamp, logo] = await Promise.all(["img/sky.webp", `img/paper${d.paper}.webp`, `img/stamp${d.stamp}.webp`, "img/logo.webp"].map(loadImg));
+    const sc = Math.max(W / sky.width, H / sky.height);
+    g.drawImage(sky, (W - sky.width * sc) / 2, (H - sky.height * sc) / 2, sky.width * sc, sky.height * sc);
+    // paper
+    const pw = 960, ph = pw * 1040 / 720, px = 60, py = 80, u = pw / 88;
+    const ink = PAPERS[d.paper].ink;
+    g.save(); g.shadowColor = "rgba(8,4,40,.55)"; g.shadowBlur = 50; g.shadowOffsetY = 24; g.drawImage(paper, px, py, pw, ph); g.restore();
+    const L = px + 10 * u, R = px + pw - 10 * u, T = py + 11 * u, B = py + ph - 9 * u;
+    // stamp with perforated edge
+    const sw = 21 * u, st = document.createElement("canvas"); st.width = st.height = Math.round(sw);
+    const sg = st.getContext("2d"); sg.fillStyle = "#fffaf0"; sg.fillRect(0, 0, sw, sw);
+    sg.drawImage(stamp, 2.4 * u, 2.4 * u, sw - 4.8 * u, sw - 4.8 * u);
+    sg.globalCompositeOperation = "destination-out"; const rr = 1.1 * u, step = 2.6 * u;
+    for (let t = step / 2; t < sw; t += step) for (const [x, y] of [[t, 0], [t, sw], [0, t], [sw, t]]) { sg.beginPath(); sg.arc(x, y, rr, 0, 7); sg.fill(); }
+    const sx = R - sw, sy = T;
+    g.save(); g.translate(sx + sw / 2, sy + sw / 2); g.rotate(4 * Math.PI / 180); g.shadowColor = "rgba(0,0,0,.2)"; g.shadowBlur = 10; g.shadowOffsetY = 4;
+    g.drawImage(st, -sw / 2, -sw / 2); g.restore();
+    // cat-head postmark
+    try {
+      const pm = await svgImg(document.querySelector(".postmark").outerHTML, ink);
+      const pmw = 28 * u, pmh = pmw * 80 / 120;
+      g.save(); g.globalAlpha = .5; g.translate(sx - 17 * u + pmw / 2, T + 8 * u + pmh / 2); g.rotate(-14 * Math.PI / 180); g.drawImage(pm, -pmw / 2, -pmh / 2, pmw, pmh); g.restore();
+    } catch (e) {}
+    // to
+    g.fillStyle = ink; g.textBaseline = "alphabetic";
+    g.font = `${6.4 * u}px ${SIGN}`; g.fillText(d.to + "：", L, T + 7 * u + 6.4 * u);
+    // foot
+    const footTop = B - 30 * u;
+    if (d.parcel && PARCEL_SVG[d.parcel]) {
+      try { const pi = await svgImg(PARCEL_SVG[d.parcel], "#c9922a"); g.drawImage(pi, L + 5 * u, footTop, 20 * u, 20 * u); } catch (e) {}
+      g.save(); g.globalAlpha = .72; g.font = `${2.9 * u}px ${SERIF}`; g.textAlign = "center";
+      g.fillText(`随信附上${PARCELS[d.parcel]}`, L + 15 * u, footTop + 24.5 * u); g.fillText(PARCEL_MEAN[d.parcel], L + 15 * u, footTop + 28.7 * u); g.restore();
+    }
+    g.save(); g.textAlign = "right";
+    g.font = `${6.4 * u}px ${SIGN}`; g.fillText(d.from, R, B);
+    g.globalAlpha = .6; g.font = `${3.2 * u}px ${SERIF}`; g.fillText("银河邮局 · 米米投递", R, B - 8 * u); g.restore();
+    // body, shrinking only if a long letter would run into the foot
+    const top = T + 24.5 * u, maxH = footTop - 2.5 * u - top;
+    let fs = 4.8 * u, lh = 7.4 * u, lines;
+    for (;;) { g.font = `${fs}px ${SERIF}`; lines = wrapLines(g, d.body, R - L); if (lines.length * lh <= maxH || fs < 2.6 * u) break; fs *= .94; lh *= .94; }
+    lines.forEach((ln, i) => g.fillText(ln, L, top + i * lh + fs));
+    // doodle sticker
+    if (d.draw) {
+      const dw = 18 * u, dx = px + pw - 9 * u - dw, dy = py + ph - 27 * u - dw;
+      g.save(); g.translate(dx + dw / 2, dy + dw / 2); g.rotate(-8 * Math.PI / 180); g.shadowColor = "rgba(40,20,60,.28)"; g.shadowBlur = 8; g.shadowOffsetY = 5;
+      g.imageSmoothingEnabled = false; g.drawImage($("l-doodle-cv"), -dw / 2, -dw / 2, dw, dw); g.restore();
+    }
+    // footer: the post office sign and where to send one back
+    const lw = 560, lh2 = lw * logo.height / logo.width;
+    g.drawImage(logo, (W - lw) / 2, py + ph + 70, lw, lh2);
+    g.save(); g.textAlign = "center"; g.fillStyle = "#fff6df"; g.globalAlpha = .7; g.font = `30px ${UI}`;
+    g.fillText("byebyealice.github.io/mimi-letter", W / 2, py + ph + 70 + lh2 + 60); g.restore();
+    return c;
+  }
+  let savedBlob = null, savedUrl = "";
+  async function openSave(e) {
+    if (e) e.stopPropagation();
+    const box = $("saved"); box.hidden = false;
+    $("saved-spin").hidden = false; $("saved-img").hidden = true; $("saved-tip").hidden = true; $("saved-dl").hidden = true;
+    try {
+      const c = await renderLetter(current);
+      savedBlob = await new Promise(r => c.toBlob(r, "image/png"));
+      if (savedUrl) URL.revokeObjectURL(savedUrl);
+      savedUrl = URL.createObjectURL(savedBlob);
+      $("saved-img").src = savedUrl; $("saved-img").hidden = false; $("saved-tip").hidden = false; $("saved-dl").hidden = false; $("saved-spin").hidden = true;
+    } catch (err) { $("saved-spin").textContent = "这封信没拍成照片，再试一次吧"; }
+  }
+  $("save").addEventListener("click", openSave);
+  $("save-mini").addEventListener("click", openSave);
+  $("saved").addEventListener("click", (e) => e.stopPropagation());
+  $("saved-close").addEventListener("click", () => { $("saved").hidden = true; $("saved-spin").textContent = "米米正在把信拍成照片……"; });
+  $("saved-dl").addEventListener("click", async () => {
+    if (!savedBlob) return;
+    const name = `米米的信_${current.to}.png`;
+    try {
+      const f = new File([savedBlob], name, { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: "米米的信" }); return; }
+    } catch (err) { if (err && err.name === "AbortError") return; }
+    const a = document.createElement("a"); a.href = savedUrl; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  });
+
   let current = parse(location.hash) || parse(DEMO);
   addEventListener("hashchange", () => { const d = parse(location.hash); if (d) { current = d; play(d); } });
   window.mimiLetter = { parse, build, play: (m) => { const d = parse(m); if (d) { current = d; play(d); } } };
   play(current);
 })();
 </script>
+
+</body>
+</html>
